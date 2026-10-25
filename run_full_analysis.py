@@ -48,35 +48,72 @@ print("="*80)
 # SECTION 1: DATA INGESTION & IN-DEPTH PREPROCESSING
 # ==============================================================================
 print("\n[STEP 1] Data Ingestion & In-depth Preprocessing Treatment...")
-data_path = 'house_dataset_big.csv'
-df = pd.read_csv(data_path)
+local_data_path = 'train.csv'
+kaggle_data_url = 'https://raw.githubusercontent.com/prasadposture/House-Prices-Advanced-Regression-Techniques/main/train.csv'
+
+if os.path.exists(local_data_path):
+    print(f"Loading dataset from local storage: '{local_data_path}'")
+    df = pd.read_csv(local_data_path)
+else:
+    print(f"Local file '{local_data_path}' not found. Fetching from Kaggle benchmark repository: {kaggle_data_url}")
+    df = pd.read_csv(kaggle_data_url)
+    df.to_csv(local_data_path, index=False)
+    print(f"Dataset successfully fetched and saved to '{local_data_path}'.")
+
 print(f"Loaded dataset: {df.shape[0]} rows, {df.shape[1]} columns.")
 
 # 1.1 Missing Value Diagnosis & Treatment
 print("\n--- 1.1 Missing Value Diagnosis & Treatment ---")
 null_counts = df.isnull().sum()
-print("Null values per column:")
-print(null_counts[null_counts > 0] if null_counts.sum() > 0 else "No missing values found in raw dataset. Applying robust imputation pipeline.")
+cols_with_null = null_counts[null_counts > 0]
+print(f"Detected {len(cols_with_null)} columns with missing values in raw train.csv:")
+for c, cnt in cols_with_null.head(10).items():
+    print(f"  - {c}: {cnt} missing ({cnt/len(df)*100:.1f}%)")
+if len(cols_with_null) > 10:
+    print(f"  ... and {len(cols_with_null)-10} more columns.")
+
+# Imputation treatment
+df_clean = df.copy()
+# Numeric imputation: LotFrontage by Neighborhood median, MasVnrArea with 0, GarageYrBlt with YearBuilt
+if 'LotFrontage' in df_clean.columns:
+    df_clean['LotFrontage'] = df_clean.groupby('Neighborhood')['LotFrontage'].transform(lambda x: x.fillna(x.median()))
+    df_clean['LotFrontage'] = df_clean['LotFrontage'].fillna(df_clean['LotFrontage'].median())
+if 'MasVnrArea' in df_clean.columns:
+    df_clean['MasVnrArea'] = df_clean['MasVnrArea'].fillna(0)
+if 'GarageYrBlt' in df_clean.columns:
+    df_clean['GarageYrBlt'] = df_clean['GarageYrBlt'].fillna(df_clean['YearBuilt'])
+
+# Categorical imputation: where NA represents absence of feature
+na_meaning_none = ['Alley', 'BsmtQual', 'BsmtCond', 'BsmtExposure', 'BsmtFinType1', 'BsmtFinType2',
+                   'FireplaceQu', 'GarageType', 'GarageFinish', 'GarageQual', 'GarageCond',
+                   'PoolQC', 'Fence', 'MiscFeature', 'MasVnrType']
+for col in na_meaning_none:
+    if col in df_clean.columns:
+        df_clean[col] = df_clean[col].fillna('None')
+
+if 'Electrical' in df_clean.columns:
+    df_clean['Electrical'] = df_clean['Electrical'].fillna(df_clean['Electrical'].mode()[0])
+
+print("Applied systematic imputation: LotFrontage (Neighborhood median), categorical amenities ('None'), Electrical (mode).")
 
 # 1.2 Outlier Detection & Treatment via IQR and Winsorization
 print("\n--- 1.2 Outlier Detection & Treatment (IQR & Winsorization) ---")
-numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+numeric_cols = df_clean.select_dtypes(include=[np.number]).columns.tolist()
 if 'SalePrice' in numeric_cols:
     numeric_cols.remove('SalePrice')
 
 outlier_summary = {}
-df_clean = df.copy()
 for col in ['LotArea', 'GrLivArea', 'TotalBsmtSF', 'GarageArea', '1stFlrSF']:
-    Q1 = df[col].quantile(0.25)
-    Q3 = df[col].quantile(0.75)
+    Q1 = df_clean[col].quantile(0.25)
+    Q3 = df_clean[col].quantile(0.75)
     IQR = Q3 - Q1
     lower_bound = Q1 - 1.5 * IQR
     upper_bound = Q3 + 1.5 * IQR
-    outliers = df[(df[col] < lower_bound) | (df[col] > upper_bound)]
+    outliers = df_clean[(df_clean[col] < lower_bound) | (df_clean[col] > upper_bound)]
     outlier_summary[col] = len(outliers)
     # Winsorize / Cap extreme 1st and 99th percentiles for robust model stability
-    p01 = df[col].quantile(0.01)
-    p99 = df[col].quantile(0.99)
+    p01 = df_clean[col].quantile(0.01)
+    p99 = df_clean[col].quantile(0.99)
     df_clean[col] = np.clip(df_clean[col], p01, p99)
 
 print("Outliers detected by 1.5*IQR rule:", outlier_summary)
@@ -92,7 +129,8 @@ df_clean['TotalSF'] = df_clean['TotalBsmtSF'] + df_clean['1stFlrSF'] + df_clean[
 df_clean['TotalBaths'] = df_clean['FullBath'] + 0.5 * df_clean['HalfBath']
 df_clean['PricePerSqFt'] = df_clean['SalePrice'] / (df_clean['GrLivArea'] + 1e-5)
 df_clean['QualityConditionIndex'] = df_clean['OverallQual'] * df_clean['OverallCond']
-print("Engineered features: HouseAge, RemodAge, IsRemodeled, TotalSF, TotalBaths, PricePerSqFt, QualityConditionIndex.")
+df_clean['PriceTier'] = pd.qcut(df_clean['SalePrice'], q=3, labels=['Affordable', 'Mid-Range', 'Luxury'])
+print("Engineered features: HouseAge, RemodAge, IsRemodeled, TotalSF, TotalBaths, PricePerSqFt, QualityConditionIndex, PriceTier.")
 
 # 1.4 Feature Transformation & Skewness Reduction
 print("\n--- 1.4 Skewness Analysis & Log Transformations ---")
@@ -104,10 +142,17 @@ df_clean['LogGrLivArea'] = np.log1p(df_clean['GrLivArea'])
 print(f"SalePrice Skewness: Before = {raw_price_skew:.3f}, After Log1p = {df_clean['LogSalePrice'].skew():.3f}")
 print(f"LotArea Skewness: Before = {raw_lot_skew:.3f}, After Log1p = {df_clean['LogLotArea'].skew():.3f}")
 
-# 1.5 Categorical Encoding
-print("\n--- 1.5 Categorical Encoding ---")
-categorical_cols = ['Neighborhood', 'HouseStyle', 'ExterQual']
-df_encoded = pd.get_dummies(df_clean, columns=categorical_cols, drop_first=True)
+# 1.5 Feature Matrix Preparation & Categorical Encoding
+print("\n--- 1.5 Categorical Encoding & Feature Matrix Construction ---")
+core_num_cols = [
+    'LotArea', 'OverallQual', 'OverallCond', 'YearBuilt', 'YearRemodAdd',
+    'GrLivArea', '1stFlrSF', '2ndFlrSF', 'BedroomAbvGr', 'FullBath', 'HalfBath',
+    'GarageCars', 'GarageArea', 'TotalBsmtSF', 'Fireplaces',
+    'HouseAge', 'RemodAge', 'IsRemodeled', 'TotalSF', 'TotalBaths', 'QualityConditionIndex'
+]
+cat_cols = ['Neighborhood', 'HouseStyle', 'ExterQual']
+df_sub = df_clean[core_num_cols + cat_cols + ['SalePrice', 'PriceTier']].copy()
+df_encoded = pd.get_dummies(df_sub, columns=cat_cols, drop_first=True)
 print(f"Dataset dimension after One-Hot Encoding: {df_encoded.shape}")
 
 # 1.6 Multicollinearity & Variance Inflation Factor (VIF)

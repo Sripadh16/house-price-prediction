@@ -47,25 +47,34 @@ This project formulates property valuation as both a **continuous estimation (Re
 
 ---
 
-## 📊 Dataset Architecture & Synthetic Pipeline
-To allow immediate end-to-end execution prior to acquiring the official dataset, `generate_dataset.py` generates a mathematically consistent, realistic 2,048-row housing dataset (`house_dataset_big.csv`) adhering to the Ames Housing benchmark:
+## 📊 Dataset Architecture: Real Kaggle Ames Housing Benchmark
+This repository utilizes the official **Kaggle Ames Housing Benchmark dataset (`train.csv`)** from the [House Prices: Advanced Regression Techniques](https://www.kaggle.com/competitions/house-prices-advanced-regression-techniques) competition.
 
-$$\text{SalePrice} = \left( \beta_0 + \beta_1 \cdot \text{GrLivArea} + \beta_2 \cdot \text{TotalBsmtSF} + \beta_3 \cdot \text{Qual}^{1.65} + \beta_4 \cdot \text{Age} + \beta_{\text{neigh}} + \beta_{\text{exter}} \right) \cdot \epsilon$$
-
-> **Swapping In Your Real Dataset**: When you obtain the actual dataset, simply replace `house_dataset_big.csv` in the root folder. All scripts and notebooks use dynamic column parsing and will execute seamlessly without code alterations.
+- **Total Transactions**: 1,460 genuine home sales in Ames, Iowa.
+- **Dimensionality**: 81 raw attributes covering physical dimensions, zoning, exterior finishes, basement conditions, and mechanical systems.
+- **Target Variable**: `SalePrice` ($ USD continuous valuation).
+- **Synthetic Code Removal**: All prior mock/synthetic data generators have been completely deprecated and purged in favor of the authentic Kaggle benchmark.
 
 ---
 
 ## 🛠️ In-Depth Preprocessing Pipeline
 
-1. **Outlier Mitigation via Winsorization**: Rather than truncating observations (which discards valuable extreme luxury properties), extreme outliers identified by $1.5 \times \text{IQR}$ are capped at the 1st and 99th percentiles.
-2. **Domain-Specific Feature Engineering**:
+1. **Systematic Missing Value Imputation**:
+   - `LotFrontage`: Imputed with median of the respective `Neighborhood` to preserve local geometric parcel distributions.
+   - Categorical Amenities (`Alley`, `BsmtQual`, `BsmtCond`, `FireplaceQu`, `GarageType`, `GarageFinish`, `PoolQC`, `Fence`, `MiscFeature`): Filled with `'None'`, explicitly representing lack of that amenity per official Ames documentation.
+   - `MasVnrArea`: Imputed with 0; `GarageYrBlt`: Imputed with `YearBuilt`; `Electrical`: Imputed with mode.
+2. **Outlier Mitigation via Winsorization**:
+   - Rather than dropping extreme luxury records, continuous features exceeding $1.5 \times \text{IQR}$ are capped at the **1st and 99th percentiles**.
+3. **Domain-Specific Feature Engineering**:
    - $\text{HouseAge} = 2024 - \text{YearBuilt}$
+   - $\text{RemodAge} = 2024 - \text{YearRemodAdd}$
+   - $\text{IsRemodeled} = \mathbb{I}(\text{YearRemodAdd} > \text{YearBuilt})$
    - $\text{TotalSF} = \text{TotalBsmtSF} + \text{1stFlrSF} + \text{2ndFlrSF}$
    - $\text{TotalBaths} = \text{FullBath} + 0.5 \times \text{HalfBath}$
+   - $\text{PricePerSqFt} = \text{SalePrice} / (\text{GrLivArea} + 10^{-5})$
    - $\text{QualityConditionIndex} = \text{OverallQual} \times \text{OverallCond}$
-3. **Variance Inflation Factor (VIF)**:
-   - High VIF identified in composite indices ($>10$) is managed via regularized shrinkage methods ($L_1$ and $L_2$).
+4. **Variance Inflation Factor (VIF)**:
+   - Diagnosed multicollinearity among composite indices (e.g. `QualityConditionIndex` VIF = 37.1) and mitigated variance inflation using regularized shrinkage ($L_1$ Lasso, $L_2$ Ridge, and ElasticNet).
 
 ---
 
@@ -88,32 +97,32 @@ $$\text{SalePrice} = \left( \beta_0 + \beta_1 \cdot \text{GrLivArea} + \beta_2 \
 
 ## 🤖 Depth of Predictive Analytics
 
-### Regression Leaderboard
+### Regression Leaderboard (Real Kaggle `train.csv`)
 | Model | $R^2$ Score | Adjusted $R^2$ | RMSE ($) | MAE ($) | MAPE (%) |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Linear Regression (OLS)** | **0.7816** | **0.7586** | **$47,969** | **$29,155** | **7.07%** |
-| **Lasso Regression ($L_1$)** | 0.7816 | 0.7586 | $47,972 | $29,174 | 7.08% |
-| **Ridge Regression ($L_2$)** | 0.7810 | 0.7579 | $48,037 | $29,231 | 7.09% |
-| **ElasticNet** | 0.7773 | 0.7538 | $48,442 | $29,412 | 7.13% |
-| **Gradient Boosting Regressor** | 0.7591 | 0.7337 | $50,387 | $31,417 | 7.69% |
-| **Random Forest Regressor** | 0.7027 | 0.6714 | $55,970 | $37,070 | 9.32% |
-| **Decision Tree Regressor** | 0.6284 | 0.5892 | $62,576 | $43,268 | 11.00% |
+| **Gradient Boosting Regressor** | **0.9172** | **0.8978** | **$25,208** | **$16,050** | **9.97%** |
+| **Random Forest Regressor** | **0.9073** | **0.8857** | **$26,668** | **$16,561** | **10.32%** |
+| **Linear Regression (OLS)** | 0.8691 | 0.8386 | $31,683 | $19,267 | 11.28% |
+| **Lasso Regression ($L_1$)** | 0.8686 | 0.8380 | $31,745 | $19,210 | 11.21% |
+| **Ridge Regression ($L_2$)** | 0.8656 | 0.8343 | $32,109 | $19,317 | 11.28% |
+| **Decision Tree Regressor** | 0.8625 | 0.8305 | $32,472 | $21,784 | 13.83% |
+| **ElasticNet** | 0.8590 | 0.8261 | $32,891 | $19,433 | 11.27% |
 
 ![Regression Diagnostics](figures/06_regression_comparisons.png)
 ![Feature Importance](figures/07_feature_importance.png)
 
 ---
 
-### Classification Leaderboard
+### Classification Leaderboard (Real Kaggle `train.csv`)
 Formulation: Predicting property price category (**Affordable**, **Mid-Range**, **Luxury**).
 
 | Classifier | Accuracy | Weighted Precision | Weighted Recall | Weighted F1-Score |
 | :--- | :---: | :---: | :---: | :---: |
-| **Support Vector Classifier (SVC)** | **78.05%** | **77.94%** | **78.05%** | **0.7798** |
-| **Gradient Boosting Classifier** | 78.05% | 77.93% | 78.05% | 0.7797 |
-| **Logistic Regression (Multinomial)**| 77.80% | 77.59% | 77.80% | 0.7767 |
-| **Random Forest Classifier** | 74.63% | 74.51% | 74.63% | 0.7457 |
-| **K-Nearest Neighbors (KNN)** | 69.27% | 68.84% | 69.27% | 0.6896 |
+| **Support Vector Classifier (SVC)** | **81.16%** | **81.58%** | **81.16%** | **0.8125** |
+| **Gradient Boosting Classifier** | 79.79% | 80.11% | 79.79% | 0.7990 |
+| **Random Forest Classifier** | 79.45% | 80.41% | 79.45% | 0.7971 |
+| **Logistic Regression (Multinomial)**| 78.08% | 79.45% | 78.08% | 0.7847 |
+| **K-Nearest Neighbors (KNN)** | 77.74% | 77.38% | 77.74% | 0.7749 |
 
 ![Classification Metrics](figures/08_classification_metrics_and_cm.png)
 
@@ -122,10 +131,10 @@ Formulation: Predicting property price category (**Affordable**, **Mid-Range**, 
 ### Clustering Strategies
 | Algorithm | Metric / Basis | Optimal Clusters / Output | Evaluation |
 | :--- | :--- | :---: | :--- |
-| **K-Means** | Euclidean Distance Partitioning | $k = 3$ | Silhouette Score = 0.237 (Elbow confirmed at $k=3$) |
+| **K-Means** | Euclidean Distance Partitioning | $k = 3$ | Silhouette Score = 0.279 (Elbow confirmed at $k=3$) |
 | **Agglomerative Hierarchical** | Ward Linkage Minimum Variance | $k = 3$ | Dendrogram distance threshold confirmed |
-| **Gaussian Mixture Models (GMM)**| Probabilistic Covariance Mixture | $k = 3$ | Silhouette Score = 0.210 |
-| **DBSCAN** | Density Core Points ($\epsilon=1.2, \text{min}=8$)| 1 dense core cluster | Identified 102 isolated noise properties |
+| **Gaussian Mixture Models (GMM)**| Probabilistic Covariance Mixture | $k = 3$ | Silhouette Score = 0.178 |
+| **DBSCAN** | Density Core Points ($\epsilon=1.2, \text{min}=8$)| 7 dense clusters | Identified 93 isolated noise properties |
 
 ![Dendrogram](figures/09_clustering_dendrogram.png)
 ![Clustering PCA Comparison](figures/10_clustering_pca_comparison.png)
@@ -133,10 +142,10 @@ Formulation: Predicting property price category (**Affordable**, **Mid-Range**, 
 ---
 
 ### Association Rule Mining
-- **Algorithmic Benchmark**: **FP-Growth** extracted 517 frequent itemsets without candidate generation overhead, achieving superior runtime over classical **Apriori**.
+- **Algorithmic Benchmark**: **Apriori vs FP-Growth** runtime efficiency benchmark on discretized transaction baskets.
 - **Top Rules**:
-  - $\text{IF } [\text{Compact Area, Low Quality}] \implies \text{Price: Affordable}$ (Confidence: **92.8%**, Lift: **2.78**)
-  - $\text{IF } [\text{2+ Garage, Luxury Baths, Spacious Area}] \implies \text{Price: Luxury}$ (Confidence: **87.2%**, Lift: **2.62**)
+  - $\text{IF } [\text{Age: Modern, Quality: High}] \implies \text{Price: Luxury}$ (Confidence: **96.0%**, Lift: **2.90**)
+  - $\text{IF } [\text{Spacious Living Area, Luxury Baths}] \implies \text{Price: Luxury}$ (Confidence: **94.0%**, Lift: **2.84**)
 
 ---
 
@@ -155,16 +164,17 @@ Implemented in `pyspark_house_prediction.py` and embedded in `HousePricePredicto
 ## 📁 Repository Structure
 ```text
 .
-├── HousePricePredictor.ipynb       # Main comprehensive coursework notebook
-├── generate_dataset.py            # Synthetic dataset generator
-├── house_dataset_big.csv          # 2048-sample housing dataset
-├── run_full_analysis.py           # Standalone automated analysis pipeline
+├── train.csv                      # Official Kaggle Ames Housing dataset (1,460 rows, 81 cols)
+├── midsem_version.ipynb           # Executed Midsem Notebook (streamlined, cut till classification)
+├── HousePricePredictor.ipynb      # Complete Coursework Notebook (All 7 sections executed)
+├── Midsem_Project_Report.docx     # Formal Midsem Evaluation Report with embedded figures
+├── MIDSEM_DOCUMENT.md             # Academic evaluation documentation
+├── run_full_analysis.py           # Standalone automated analysis pipeline script
 ├── pyspark_house_prediction.py    # PySpark Big Data MLlib pipeline
-├── build_complete_notebook.py     # Programmatic notebook builder
 ├── summary_metrics.json           # Exported JSON metric leaderboard
 ├── review.jpeg                    # Instructor feedback reference image
 ├── .gitignore                     # Git ignore rules
-├── figures/                       # High-resolution generated visual assets
+├── figures/                       # High-resolution generated visual assets (10 figures)
 │   ├── 01_hist_box_kde.png
 │   ├── 02_density_rug_plot.png
 │   ├── 03_radar_chart.png
@@ -182,16 +192,16 @@ Implemented in `pyspark_house_prediction.py` and embedded in `HousePricePredicto
 
 ## 🚀 Setup & Execution Guide
 
-### 1. Clone & Initialize Environment
+### 1. Initialize Environment
 ```bash
 git clone https://github.com/Sripadh16/house-price-prediction.git
 cd house-price-prediction
-pip install numpy pandas scipy scikit-learn matplotlib seaborn mlxtend statsmodels
+pip install numpy pandas scipy scikit-learn matplotlib seaborn mlxtend statsmodels nbformat nbclient
 ```
 
-### 2. Run Synthetic Dataset Generation
+### 2. Launch Midsem Submission Notebook
 ```bash
-python generate_dataset.py
+jupyter notebook midsem_version.ipynb
 ```
 
 ### 3. Run the Full Analytics Suite
@@ -204,8 +214,3 @@ python run_full_analysis.py
 python pyspark_house_prediction.py
 ```
 
-### 5. Launch Jupyter Notebook
-```bash
-jupyter notebook HousePricePredictor.ipynb
-```
-*(Or upload `HousePricePredictor.ipynb` and `house_dataset_big.csv` directly to Google Colab for one-click execution).*

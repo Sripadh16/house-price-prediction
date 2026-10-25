@@ -1,13 +1,13 @@
 {
-    "num_samples": 2048,
-    "best_regression_model": "Linear Regression (OLS)",
-    "best_reg_r2": 0.7816136142245245,
-    "best_reg_rmse": 47969.791407634904,
+    "num_samples": 1460,
+    "best_regression_model": "Gradient Boosting Regressor",
+    "best_reg_r2": 0.9171535221111226,
+    "best_reg_rmse": 25208.32224730962,
     "best_classifier_model": "Support Vector Classifier (SVC)",
-    "best_clf_accuracy": 0.7804878048780488,
-    "best_clf_f1": 0.7798114958480228,
+    "best_clf_accuracy": 0.8116438356164384,
+    "best_clf_f1": 0.8125424863584664,
     "optimal_k_clusters": 3,
-    "kmeans_silhouette": 0.2373123601873981,
-    "num_frequent_rules": 2528,
-    "fp_growth_speedup": 0.3589014513455604
+    "kmeans_silhouette": 0.27874643275319494,
+    "num_frequent_rules": 6482,
+    "fp_growth_speedup": 0.3754531531706182
 }

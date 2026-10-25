@@ -17,7 +17,7 @@ import os
 import pandas as pd
 import numpy as np
 
-def run_pyspark_analytics(csv_path="house_dataset_big.csv"):
+def run_pyspark_analytics(csv_path="train.csv"):
     print("="*80)
     print("PYSPARK BIG DATA ANALYTICS: MINIMAL PREDICTIVE TECHNIQUES PIPELINE")
     print("="*80)
@@ -158,5 +158,5 @@ def simulate_pyspark_demonstration(csv_path):
     print("="*70)
 
 if __name__ == '__main__':
-    csv_file = 'house_dataset_big.csv' if os.path.exists('house_dataset_big.csv') else 'house_dataset_big.csv'
+    csv_file = 'train.csv' if os.path.exists('train.csv') else 'train.csv'
     run_pyspark_analytics(csv_file)
