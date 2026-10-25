@@ -34,18 +34,7 @@ This project formulates property valuation as both a **continuous estimation (Re
 
 ---
 
-## 🔍 Review Feedback & Direct Resolution
 
-| Instructor Remarks | Specific Requirement | Implementation & Resolution in this Repository |
-| :--- | :--- | :--- |
-| **"In-depth treatment of preprocessing techniques required"** | Move beyond basic missing value filling. Address outliers, feature engineering, skewness, and collinearity. | Applied IQR & Z-score detection with **Winsorization capping** [1st, 99th percentile], domain feature engineering (`HouseAge`, `TotalSF`, `TotalBaths`, `PricePerSqFt`, `QualityConditionIndex`), Log1p skewness reduction, and **Variance Inflation Factor (VIF)** diagnosis. |
-| **"What about other plots such as radar, density rug, etc for their comparative power"** | High-dimensional and high-resolution exploratory visualizations with written comparative inferences. | Implemented **Density with Rug Plot** (`kdeplot` + `rugplot`) revealing individual tail observations across exterior qualities, and a **Radar Chart (Spider Plot)** benchmarking 6 continuous dimensions across market price tiers with deep analytical inferences. |
-| **"What about depth of classifiers"** | Expand beyond a single basic Random Forest classifier. | Benchmarked 5 distinct classifier paradigms: **Random Forest, Gradient Boosting, Support Vector Machine (SVC), Multinomial Logistic Regression, and K-Nearest Neighbors (KNN)** with weighted Precision, Recall, F1, and normalized Confusion Matrices. |
-| **"Depth of clustering strategies that are supported as packages!"** | Move beyond standalone K-Means; benchmark multiple clustering strategies. | Implemented **K-Means (Elbow + Silhouette)**, **Agglomerative Hierarchical Clustering (with Ward linkage Dendrogram)**, **DBSCAN (density & noise isolation)**, and **Gaussian Mixture Models (GMM)** with comparative 2D PCA projections. |
-| **"What about rule mining techniques"** | Structured association discovery with algorithmic performance comparisons. | Discretized properties into transactional itemsets, benchmarked **Apriori vs FP-Growth** runtime efficiency, and extracted high-lift association rules (Support, Confidence, Lift, Leverage, Conviction). |
-| **"No exploration in PySpark of the minimal predictive analytics techniques"** | Demonstrate distributed Big Data analytics. | Developed full **PySpark MLlib** pipeline with `StringIndexer`, `OneHotEncoder`, `VectorAssembler`, `StandardScaler`, distributed **PySpark Regression**, **PySpark Classification**, and **PySpark Clustering**. |
-
----
 
 ## 📊 Dataset Architecture: Real Kaggle Ames Housing Benchmark
 This repository utilizes the official **Kaggle Ames Housing Benchmark dataset (`train.csv`)** from the [House Prices: Advanced Regression Techniques](https://www.kaggle.com/competitions/house-prices-advanced-regression-techniques) competition.
